@@ -800,8 +800,8 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
         </div>
       )}
 
-      {/* Left Column: Text / Chat (Order 1 on mobile, 1 on desktop) */}
-      <div className="flex-1 w-full max-w-lg flex flex-col justify-center xl:mt-12 order-1">
+      {/* Left Column: Text / Chat (Order 2 on mobile, 1 on desktop) */}
+      <div className="flex-1 w-full max-w-lg flex flex-col justify-center xl:mt-12 order-2 xl:order-1">
         {!connected ? (
           <div className="text-center xl:text-left">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 text-slate-900 dark:text-white tracking-tight leading-[1.1]">
@@ -864,8 +864,8 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
         )}
       </div>
 
-      {/* Right Column: Transfer Card (Order 2 on mobile, 2 on desktop) */}
-      <div className="w-full max-w-[420px] shrink-0 order-2">
+      {/* Right Column: Transfer Card (Order 1 on mobile, 2 on desktop) */}
+      <div className="w-full max-w-[420px] shrink-0 order-1 xl:order-2">
         <div className="w-full bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200/60 dark:border-slate-800 flex flex-col relative z-20 text-slate-900 dark:text-slate-100">
           
           {authError && !showPasswordPrompt && (
@@ -1026,14 +1026,20 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
               />
               
               <div 
-              className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-10 flex flex-col items-center justify-center transition-all group text-center min-h-[220px]"
+              className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-10 flex flex-col items-center justify-center transition-all group cursor-pointer text-center min-h-[220px]"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
+              onClick={(e) => {
+                // Prevent click if they are clicking the specific buttons inside
+                if ((e.target as HTMLElement).tagName !== 'BUTTON') {
+                  document.getElementById('fileInput')?.click();
+                }
+              }}
               >
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4 group-hover:-translate-y-1 transition-transform">
                   <UploadCloud className="w-8 h-8 text-blue-500" />
                 </div>
-                <p className="text-[17px] font-bold text-slate-800 mb-1">Drag files or folders here</p>
+                <p className="text-[17px] font-bold text-slate-800 mb-1">Click or drag files here</p>
                 <p className="text-[13px] font-semibold text-slate-400 mb-4">Encrypted P2P transfer</p>
                 <div className="flex gap-2">
                   <button onClick={() => document.getElementById('fileInput')?.click()} className="px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-200 transition-colors">Select Files</button>
