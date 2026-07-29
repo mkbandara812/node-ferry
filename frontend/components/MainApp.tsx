@@ -789,19 +789,19 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
           <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full shadow-2xl relative">
             <button 
               onClick={() => setShowQRScanner(false)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-[110]"
             >
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
             <h3 className="text-lg font-bold text-slate-800 mb-4 text-center">Scan QR Code</h3>
-            <div id="qr-reader" className="w-full overflow-hidden rounded-xl bg-slate-50 border border-slate-200"></div>
+            <div id="qr-reader" className="w-full overflow-hidden rounded-xl bg-slate-50 border border-slate-200 text-slate-900 [&_a]:text-blue-600 [&_a]:font-bold [&_span]:text-slate-800 [&_span]:font-medium [&_img]:opacity-100 [&_select]:bg-white [&_select]:text-slate-800 [&_select]:border-slate-200 [&_select]:rounded-lg [&_button]:bg-blue-600 [&_button]:text-white [&_button]:px-4 [&_button]:py-2 [&_button]:rounded-lg [&_button]:font-bold [&_button]:mt-2"></div>
             <p className="text-center text-sm font-medium text-slate-500 mt-4">Point your camera at the receiver's QR code to join instantly.</p>
           </div>
         </div>
       )}
 
-      {/* Left Column: Text / Chat (Moved to Left for better hierarchy) */}
-      <div className="flex-1 w-full max-w-lg flex flex-col justify-center xl:mt-12 order-2 xl:order-1">
+      {/* Left Column: Text / Chat (Order 1 on mobile, 1 on desktop) */}
+      <div className="flex-1 w-full max-w-lg flex flex-col justify-center xl:mt-12 order-1">
         {!connected ? (
           <div className="text-center xl:text-left">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 text-slate-900 dark:text-white tracking-tight leading-[1.1]">
@@ -864,8 +864,8 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
         )}
       </div>
 
-      {/* Right Column: Transfer Card (Order 1 on mobile, 2 on desktop) */}
-      <div className="w-full max-w-[420px] shrink-0 order-1 xl:order-2">
+      {/* Right Column: Transfer Card (Order 2 on mobile, 2 on desktop) */}
+      <div className="w-full max-w-[420px] shrink-0 order-2">
         <div className="w-full bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200/60 dark:border-slate-800 flex flex-col relative z-20 text-slate-900 dark:text-slate-100">
           
           {authError && !showPasswordPrompt && (
