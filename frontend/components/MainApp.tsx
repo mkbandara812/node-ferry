@@ -18,6 +18,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
   const [showPasswordPrompt, setShowPasswordPrompt] = useState<boolean>(false);
   const [showDonationPopup, setShowDonationPopup] = useState<boolean>(false);
   const [showQuotaModal, setShowQuotaModal] = useState<boolean>(false);
+  const [showQRScanner, setShowQRScanner] = useState<boolean>(false);
   const [quotaForm, setQuotaForm] = useState({ reason: '', amount: '10GB', donatedBefore: 'No', planToDonate: 'Yes' });
   const [quotaSubmitStatus, setQuotaSubmitStatus] = useState<string>('');
 
@@ -147,6 +148,34 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [transferProgress]);
+
+  useEffect(() => {
+    if (showQRScanner) {
+      let scannerInstance: any = null;
+      import('html5-qrcode').then((html5Qrcode) => {
+        scannerInstance = new html5Qrcode.Html5QrcodeScanner('qr-reader', {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+        }, false);
+        
+        scannerInstance.render((text: string) => {
+          scannerInstance.clear();
+          setShowQRScanner(false);
+          try {
+            const url = new URL(text);
+            const r = url.searchParams.get('room');
+            if (r) joinRoom(r);
+          } catch(e) {
+             joinRoom(text);
+          }
+        }, () => {});
+      });
+
+      return () => {
+         if (scannerInstance) scannerInstance.clear().catch(() => {});
+      };
+    }
+  }, [showQRScanner]);
 
   const initWebRTC = (isInit: boolean) => {
     const pc = new RTCPeerConnection({
@@ -418,12 +447,33 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
     }
   };
 
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const updatedFiles = [...files, ...Array.from(e.dataTransfer.files!)];
+  const traverseFileTree = async (item: any, path: string = ''): Promise<File[]> => {
+    return new Promise((resolve) => {
+      if (item.isFile) {
+        item.file((file: File) => {
+          resolve([file]);
+        });
+      } else if (item.isDirectory) {
+        const dirReader = item.createReader();
+        dirReader.readEntries(async (entries: any[]) => {
+          let files: File[] = [];
+          for (const entry of entries) {
+            const nestedFiles = await traverseFileTree(entry, path + item.name + '/');
+            files = [...files, ...nestedFiles];
+          }
+          resolve(files);
+        });
+      } else {
+        resolve([]);
+      }
+    });
+  };
+
+  const processSelectedFiles = (newFiles: File[]) => {
+    if (newFiles.length > 0) {
+      const updatedFiles = [...files, ...newFiles];
       if (updatedFiles.length > 1) {
-          setFileWarning("Notice: Sending multiple files will trigger multiple download prompts for the receiver. We recommend putting them in a .zip folder first if possible.");
+          setFileWarning("Notice: Sending folders or multiple files will trigger multiple download prompts for the receiver. We highly recommend putting them in a .zip folder first if possible.");
       } else {
           setFileWarning('');
       }
@@ -431,17 +481,33 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
       set('nodeferry_files', updatedFiles).catch(console.error);
     }
   };
+
+  const handleFileDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.items) {
+      let droppedFiles: File[] = [];
+      const items = Array.from(e.dataTransfer.items);
+      for (const item of items) {
+        if (item.kind === 'file') {
+          const entry = item.webkitGetAsEntry();
+          if (entry) {
+            const nestedFiles = await traverseFileTree(entry);
+            droppedFiles = [...droppedFiles, ...nestedFiles];
+          } else {
+            const file = item.getAsFile();
+            if (file) droppedFiles.push(file);
+          }
+        }
+      }
+      processSelectedFiles(droppedFiles);
+    } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processSelectedFiles(Array.from(e.dataTransfer.files));
+    }
+  };
   
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const updatedFiles = [...files, ...Array.from(e.target.files!)];
-      if (updatedFiles.length > 1) {
-          setFileWarning("Notice: Sending multiple files will trigger multiple download prompts for the receiver. We recommend putting them in a .zip folder first if possible.");
-      } else {
-          setFileWarning('');
-      }
-      setFiles(updatedFiles);
-      set('nodeferry_files', updatedFiles).catch(console.error);
+      processSelectedFiles(Array.from(e.target.files));
     }
   };
 
@@ -717,6 +783,23 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
         </div>
       )}
 
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full shadow-2xl relative">
+            <button 
+              onClick={() => setShowQRScanner(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
+            >
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h3 className="text-lg font-bold text-slate-800 mb-4 text-center">Scan QR Code</h3>
+            <div id="qr-reader" className="w-full overflow-hidden rounded-xl bg-slate-50 border border-slate-200"></div>
+            <p className="text-center text-sm font-medium text-slate-500 mt-4">Point your camera at the receiver's QR code to join instantly.</p>
+          </div>
+        </div>
+      )}
+
       {/* Left Column: Text / Chat (Moved to Left for better hierarchy) */}
       <div className="flex-1 w-full max-w-lg flex flex-col justify-center xl:mt-12 order-2 xl:order-1">
         {!connected ? (
@@ -903,6 +986,14 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                   >
                       Join
                   </button>
+                  <button
+                      type="button"
+                      onClick={() => setShowQRScanner(true)}
+                      className="px-4 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center"
+                      title="Scan QR Code"
+                  >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                  </button>
                   </form>
               </div>
               )}
@@ -926,18 +1017,28 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
               multiple
               onChange={handleFileSelect} 
               />
+              <input 
+              type="file" 
+              id="folderInput" 
+              className="hidden" 
+              {...{webkitdirectory: "true", directory: "true", multiple: true} as any}
+              onChange={handleFileSelect} 
+              />
               
               <div 
-              className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-10 flex flex-col items-center justify-center transition-all group cursor-pointer text-center min-h-[220px]"
+              className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-10 flex flex-col items-center justify-center transition-all group text-center min-h-[220px]"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
-              onClick={() => document.getElementById('fileInput')?.click()}
               >
-              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4 group-hover:-translate-y-1 transition-transform">
-                <UploadCloud className="w-8 h-8 text-blue-500" />
-              </div>
-              <p className="text-[17px] font-bold text-slate-800 mb-1">Click or drag files to share</p>
-              <p className="text-[13px] font-semibold text-slate-400">Encrypted P2P transfer</p>
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4 group-hover:-translate-y-1 transition-transform">
+                  <UploadCloud className="w-8 h-8 text-blue-500" />
+                </div>
+                <p className="text-[17px] font-bold text-slate-800 mb-1">Drag files or folders here</p>
+                <p className="text-[13px] font-semibold text-slate-400 mb-4">Encrypted P2P transfer</p>
+                <div className="flex gap-2">
+                  <button onClick={() => document.getElementById('fileInput')?.click()} className="px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-200 transition-colors">Select Files</button>
+                  <button onClick={() => document.getElementById('folderInput')?.click()} className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-200 transition-colors">Select Folder</button>
+                </div>
               </div>
 
               {fileWarning && (
