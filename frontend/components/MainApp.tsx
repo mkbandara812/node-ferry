@@ -667,11 +667,11 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
       });
       
       if (response.ok) {
-        setQuotaSubmitStatus('Request submitted successfully!');
+        setQuotaSubmitStatus('Request submitted! For faster approval, please email support@nodeferry.com');
         setTimeout(() => {
           setShowQuotaModal(false);
           setQuotaSubmitStatus('');
-        }, 2000);
+        }, 10000);
       } else {
         setQuotaSubmitStatus('Failed to submit. Please try again.');
       }

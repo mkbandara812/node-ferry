@@ -21,7 +21,7 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-500 dark:text-slate-400">
           <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Home</Link>
           <Link href="/about" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">How it Works</Link>
-          <Link href="/contact" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Support</Link>
+          <a href="mailto:support@nodeferry.com" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Support</a>
         </nav>
 
         <div className="flex items-center gap-4">
