@@ -57,8 +57,10 @@ export default function ChatBot() {
         }
 
         try {
-            // Build conversation history for Gemini API
-            const contents = newMessages.map(msg => ({
+            // Build conversation history for Gemini API (must start with user)
+            const apiMessages = newMessages[0].role === 'model' ? newMessages.slice(1) : newMessages;
+            
+            const contents = apiMessages.map(msg => ({
                 role: msg.role,
                 parts: [{ text: msg.text }]
             }));
