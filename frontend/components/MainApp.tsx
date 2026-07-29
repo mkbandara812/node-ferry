@@ -331,12 +331,24 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
     ws.onerror = (error) => {
       console.error('WebSocket Error:', error);
-      setAuthError('Signaling Server is offline. Please make sure the backend is running.');
+      const pc = peerConnectionRef.current;
+      if (!pc || (pc.connectionState !== 'connected' && pc.iceConnectionState !== 'connected')) {
+        setAuthError('Signaling Server is offline. Please make sure the backend is running.');
+      }
     };
 
     ws.onclose = (event) => {
-      if (!event.wasClean && !connected) {
-        setAuthError('Connection to Signaling Server lost.');
+      const pc = peerConnectionRef.current;
+      const isPeerConnected = pc && (pc.connectionState === 'connected' || pc.iceConnectionState === 'connected');
+      
+      if (!event.wasClean && !isPeerConnected) {
+        // Mobile browsers often kill WebSockets when opening the file picker.
+        // Try to reconnect silently instead of showing an error immediately.
+        setTimeout(() => {
+            if (!peerConnectionRef.current || peerConnectionRef.current.connectionState !== 'connected') {
+                connectSignalingServer(id, isInitiator);
+            }
+        }, 3000);
       }
     };
 
