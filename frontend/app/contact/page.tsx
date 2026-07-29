@@ -11,13 +11,16 @@ export default function Contact() {
     setStatus('loading');
     
     try {
-        const wsUrl = process.env.NEXT_PUBLIC_SIGNALING_URL || 'ws://localhost:8080';
-        const apiUrl = wsUrl.replace('wss://', 'https://').replace('ws://', 'http://');
-        
-        const res = await fetch(`${apiUrl}/api/contact`, {
+        const res = await fetch(`https://formsubmit.co/ajax/support@nodeferry.com`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                _subject: "New Support Message from NodeFerry",
+                ...formData
+            })
         });
         
         if (res.ok) {

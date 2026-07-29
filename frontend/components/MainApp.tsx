@@ -754,6 +754,23 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
       const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_URL || 'ws://localhost:8080';
       const apiUrl = signalingUrl.replace('ws://', 'http://').replace('wss://', 'https://');
       
+      // 1. Send Email via FormSubmit
+      await fetch(`https://formsubmit.co/ajax/support@nodeferry.com`, {
+          method: 'POST',
+          headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+              _subject: "New Quota Request from NodeFerry",
+              "Reason": quotaForm.reason,
+              "Requested Amount": quotaForm.amount,
+              "Donated Before": quotaForm.donatedBefore,
+              "Plans To Donate": quotaForm.planToDonate
+          })
+      });
+
+      // 2. Record request in backend
       const response = await fetch(`${apiUrl}/request-quota`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
