@@ -5,6 +5,17 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
+});
 
 const app = express();
 app.use(cors());
@@ -169,7 +180,7 @@ app.get('/', (req, res) => {
 });
 
 // Admin API
-app.post('/request-quota', (req, res) => {
+app.post('/request-quota', async (req, res) => {
   let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   // if behind proxy, x-forwarded-for can be a comma separated list, take first
   if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
@@ -184,7 +195,46 @@ app.post('/request-quota', (req, res) => {
       fs.writeFileSync(REQUESTS_FILE, JSON.stringify(requests, null, 2));
   }
   
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+          await transporter.sendMail({
+              from: `"NodeFerry System" <${process.env.SMTP_USER}>`,
+              to: 'support@nodeferry.com',
+              subject: 'New Quota Increase Request',
+              text: `IP Address: ${ip}\nRequested Amount: ${amount}\nDonated Before: ${donatedBefore}\nPlan To Donate: ${planToDonate}\n\nReason:\n${reason}\n\nYou can whitelist this IP manually in your server.`
+          });
+      } catch (e) {
+          console.error("Quota email error:", e);
+      }
+  }
+  
   res.json({ success: true });
+});
+
+app.post('/api/contact', async (req, res) => {
+    try {
+        const { name, email, message } = req.body;
+        if (!name || !email || !message) return res.status(400).json({ error: 'Missing fields' });
+        
+        let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
+
+        if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+            await transporter.sendMail({
+                from: `"${name}" <${process.env.SMTP_USER}>`, 
+                replyTo: email,
+                to: 'support@nodeferry.com',
+                subject: 'New Support Message from NodeFerry',
+                text: `Name: ${name}\nEmail: ${email}\nIP: ${ip}\n\nMessage:\n${message}`
+            });
+            res.json({ success: true });
+        } else {
+            res.status(500).json({ error: 'Email service not configured on server' });
+        }
+    } catch (e) {
+        console.error("Email error:", e);
+        res.status(500).json({ error: 'Failed to send email' });
+    }
 });
 
 app.get('/admin/requests', (req, res) => {
