@@ -50,7 +50,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-transparent text-slate-900 dark:text-slate-100 relative" suppressHydrationWarning>
+        <div className="premium-bg"></div>
         <Header />
         <main className="flex-1 flex flex-col items-center">{children}</main>
         <Footer />
@@ -70,6 +71,16 @@ export default function RootLayout({
                   );
                 });
               }
+
+              // Code Protection
+              document.addEventListener('contextmenu', event => event.preventDefault());
+              document.addEventListener('keydown', (e) => {
+                  if (e.key === 'F12' || 
+                      (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
+                      (e.ctrlKey && e.key === 'U')) {
+                      e.preventDefault();
+                  }
+              });
             `,
           }}
         />
