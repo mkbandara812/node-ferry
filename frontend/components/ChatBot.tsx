@@ -76,7 +76,10 @@ export default function ChatBot() {
                 })
             });
 
-            if (!response.ok) throw new Error("API Error");
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`${response.status} - ${errText}`);
+            }
 
             const data = await response.json();
             const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I didn't understand that.";
@@ -87,11 +90,12 @@ export default function ChatBot() {
             if (botReply.toLowerCase().includes('email') || botReply.toLowerCase().includes('support team')) {
                 setShowEmailForm(true);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Gemini API Error:", error);
+            const keyPrefix = apiKey ? apiKey.substring(0, 5) : "none";
             setMessages(prev => [...prev, { 
                 role: 'model', 
-                text: 'Oops! I am having trouble connecting to my brain right now. You can send an email to support instead.' 
+                text: `Oops! I am having trouble connecting to my brain right now. (Key starts with: ${keyPrefix}, Error: ${error.message}). You can send an email to support instead.` 
             }]);
             setShowEmailForm(true);
         } finally {
