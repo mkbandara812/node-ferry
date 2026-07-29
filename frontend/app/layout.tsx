@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Analytics } from "@vercel/analytics/react";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,11 +52,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-transparent text-slate-900 dark:text-slate-100 relative" suppressHydrationWarning>
-        <div className="premium-bg"></div>
-        <Header />
-        <main className="flex-1 flex flex-col items-center">{children}</main>
-        <Footer />
-        <Analytics />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <div className="premium-bg"></div>
+          <Header />
+          <main className="flex-1 flex flex-col items-center">{children}</main>
+          <Footer />
+          <Analytics />
+        </ThemeProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `

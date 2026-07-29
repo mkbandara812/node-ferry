@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Coffee } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export default function Header() {
   return (
@@ -25,6 +26,7 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <a href="https://ko-fi.com/nodeferry" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all bg-[#FF5E5B] hover:bg-[#FF4A47] text-white shadow-sm shadow-[#FF5E5B]/20 active:scale-95">
             <Coffee className="w-4 h-4" />
             Support on Ko-fi

@@ -2,13 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { UploadCloud, CheckCircle, File as FileIcon, Lock, ShieldAlert, ShieldCheck, Send, LogOut, Coffee } from 'lucide-react';
+import { UploadCloud, CheckCircle, File as FileIcon, Lock, ShieldAlert, ShieldCheck, Send, LogOut, Coffee, History } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 import confetti from 'canvas-confetti';
+
+export interface TransferRecord {
+  id: string;
+  filename: string;
+  size: number;
+  date: string;
+  role: 'sent' | 'received';
+}
 
 export default function MainApp({ initialRoomId }: { initialRoomId?: string } = {}) {
   const [roomId, setRoomId] = useState<string>(initialRoomId || '');
   const [connected, setConnected] = useState<boolean>(false);
+  const [peerCount, setPeerCount] = useState<number>(0);
   const [files, setFiles] = useState<File[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
   const [receivingFile, setReceivingFile] = useState<{name: string, size: number} | null>(null);
@@ -21,6 +30,24 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
   const [showQRScanner, setShowQRScanner] = useState<boolean>(false);
   const [quotaForm, setQuotaForm] = useState({ reason: '', amount: '10GB', donatedBefore: 'No', planToDonate: 'Yes' });
   const [quotaSubmitStatus, setQuotaSubmitStatus] = useState<string>('');
+
+  const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('nodeferry_history');
+    if (saved) {
+      try { setTransferHistory(JSON.parse(saved)); } catch (e) {}
+    }
+  }, []);
+
+  const addHistoryRecord = (record: TransferRecord) => {
+    setTransferHistory(prev => {
+      const newHistory = [record, ...prev].slice(0, 100);
+      localStorage.setItem('nodeferry_history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
 
   const [joinPassword, setJoinPassword] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
@@ -51,8 +78,9 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
   const [baseUrl, setBaseUrl] = useState<string>('https://nodeferry.com');
   
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const peersRef = useRef<Record<string, RTCPeerConnection>>({});
+  const dataChannelsRef = useRef<Record<string, RTCDataChannel>>({});
+  const myClientIdRef = useRef<string>('');
   const wsRef = useRef<WebSocket | null>(null);
 
   const receiveBufferRef = useRef<ArrayBuffer[]>([]);
@@ -87,14 +115,10 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
   };
 
   const resetRoom = () => {
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close();
-      dataChannelRef.current = null;
-    }
+    Object.values(peersRef.current).forEach(pc => pc.close());
+    peersRef.current = {};
+    Object.values(dataChannelsRef.current).forEach(dc => dc.close());
+    dataChannelsRef.current = {};
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -103,6 +127,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
     setRoomId('');
     setConnected(false);
+    setPeerCount(0);
     setFiles([]);
     set('nodeferry_files', []).catch(console.error);
     setCurrentFileIndex(0);
@@ -177,23 +202,30 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
     }
   }, [showQRScanner]);
 
-  const initWebRTC = (isInit: boolean) => {
+  const initWebRTC = (peerId: string) => {
+    if (peersRef.current[peerId]) return peersRef.current[peerId];
+
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        wsRef.current?.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
+        wsRef.current?.send(JSON.stringify({ type: 'candidate', candidate: event.candidate, target: peerId }));
       }
     };
 
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-          setAuthError('Connection lost. The peer may have disconnected.');
-          setConnected(false);
-          setIsSecureE2EE(false);
-          releaseWakeLock();
+          pc.close();
+          delete peersRef.current[peerId];
+          delete dataChannelsRef.current[peerId];
+          if (Object.keys(peersRef.current).length === 0) {
+              setAuthError('Connection lost. The peer may have disconnected.');
+              setConnected(false);
+              setIsSecureE2EE(false);
+              releaseWakeLock();
+          }
       }
     };
 
@@ -203,13 +235,14 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
       receiveChannel.onmessage = handleReceiveMessage;
       receiveChannel.onopen = () => {
           setConnected(true);
+          setPeerCount(prev => prev + 1);
           setShowPasswordPrompt(false);
           requestWakeLock();
       };
-      dataChannelRef.current = receiveChannel;
+      dataChannelsRef.current[peerId] = receiveChannel;
     };
 
-    peerConnectionRef.current = pc;
+    peersRef.current[peerId] = pc;
     return pc;
   };
 
@@ -264,7 +297,9 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
           receivedSizeRef.current > 0
         ) {
           // Resume existing transfer
-          dataChannelRef.current?.send(JSON.stringify({ type: 'resume_request', offset: receivedSizeRef.current }));
+          Object.values(dataChannelsRef.current).forEach(ch => {
+              if (ch.readyState === 'open') ch.send(JSON.stringify({ type: 'resume_request', offset: receivedSizeRef.current }));
+          });
         } else {
           incomingFileMetaRef.current = { name: message.name, size: message.size };
           setReceivingFile({ name: message.name, size: message.size });
@@ -292,6 +327,16 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
         setTransferProgress(100);
         setTransferSpeed('Complete');
         setEta('');
+        
+        if (incomingFileMetaRef.current) {
+          addHistoryRecord({
+            id: crypto.randomUUID(),
+            filename: incomingFileMetaRef.current.name,
+            size: incomingFileMetaRef.current.size,
+            date: new Date().toISOString(),
+            role: 'received'
+          });
+        }
         
         setTimeout(() => {
             setTransferProgress(0);
@@ -338,19 +383,21 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
     }
   };
 
-  const proceedToOffer = async (pc: RTCPeerConnection, ws: WebSocket) => {
+  const proceedToOffer = async (peerId: string) => {
+    const pc = initWebRTC(peerId);
     const dataChannel = pc.createDataChannel('fileTransfer');
     dataChannel.binaryType = 'arraybuffer';
     dataChannel.onopen = () => {
         setConnected(true);
+        setPeerCount(prev => prev + 1);
         requestWakeLock();
     };
     dataChannel.onmessage = handleReceiveMessage;
-    dataChannelRef.current = dataChannel;
+    dataChannelsRef.current[peerId] = dataChannel;
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    ws.send(JSON.stringify({ type: 'offer', offer }));
+    wsRef.current?.send(JSON.stringify({ type: 'offer', offer, target: peerId }));
   };
 
   const connectSignalingServer = async (id: string, isInitiator: boolean) => {
@@ -360,21 +407,17 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
     ws.onerror = (error) => {
       console.error('WebSocket Error:', error);
-      const pc = peerConnectionRef.current;
-      if (!pc || (pc.connectionState !== 'connected' && pc.iceConnectionState !== 'connected')) {
+      if (Object.keys(peersRef.current).length === 0) {
         setAuthError('Signaling Server is offline. Please make sure the backend is running.');
       }
     };
 
     ws.onclose = (event) => {
-      const pc = peerConnectionRef.current;
-      const isPeerConnected = pc && (pc.connectionState === 'connected' || pc.iceConnectionState === 'connected');
+      const isPeerConnected = Object.values(peersRef.current).some(pc => pc.connectionState === 'connected' || pc.iceConnectionState === 'connected');
       
       if (!event.wasClean && !isPeerConnected) {
-        // Mobile browsers often kill WebSockets when opening the file picker.
-        // Try to reconnect silently instead of showing an error immediately.
         setTimeout(() => {
-            if (!peerConnectionRef.current || peerConnectionRef.current.connectionState !== 'connected') {
+            if (Object.keys(peersRef.current).length === 0) {
                 connectSignalingServer(id, isInitiator);
             }
         }, 3000);
@@ -383,7 +426,6 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
     ws.onopen = async () => {
       setAuthError('');
-      initWebRTC(isInitiator);
       if (!isInitiator) {
         ws.send(JSON.stringify({ type: 'join' }));
       }
@@ -391,36 +433,65 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
     ws.onmessage = async (event) => {
       const message = JSON.parse(event.data);
-      const pc = peerConnectionRef.current;
-      if (!pc) return;
+
+      if (message.type === 'welcome') {
+          myClientIdRef.current = message.clientId;
+          return;
+      }
 
       if (message.type === 'limit_exceeded') {
           setLimitError(message.message || 'Daily transfer limit reached.');
-      } else if (message.type === 'join' && isInitiator) {
+          return;
+      } 
+      
+      if (message.type === 'leave') {
+          const peerId = message.from;
+          if (peersRef.current[peerId]) {
+              if (dataChannelsRef.current[peerId] && dataChannelsRef.current[peerId].readyState === 'open') {
+                  setPeerCount(prev => Math.max(0, prev - 1));
+              }
+              peersRef.current[peerId].close();
+              delete peersRef.current[peerId];
+              delete dataChannelsRef.current[peerId];
+          }
+          if (Object.keys(peersRef.current).length === 0) {
+              setConnected(false);
+              setPeerCount(0);
+          }
+          return;
+      }
+
+      const peerId = message.from;
+      if (!peerId) return;
+
+      if (message.type === 'join' && isInitiator) {
         if (roomPassword) {
-            ws.send(JSON.stringify({ type: 'auth_required' }));
+            ws.send(JSON.stringify({ type: 'auth_required', target: peerId }));
         } else {
-            proceedToOffer(pc, ws);
+            proceedToOffer(peerId);
         }
       } else if (message.type === 'auth_required' && !isInitiator) {
           setShowPasswordPrompt(true);
       } else if (message.type === 'auth' && isInitiator) {
           if (message.password === roomPassword) {
-              proceedToOffer(pc, ws);
+              proceedToOffer(peerId);
           } else {
-              ws.send(JSON.stringify({ type: 'auth_failed' }));
+              ws.send(JSON.stringify({ type: 'auth_failed', target: peerId }));
           }
       } else if (message.type === 'auth_failed' && !isInitiator) {
           setAuthError('Incorrect password. Please try again.');
       } else if (message.type === 'offer') {
+        const pc = initWebRTC(peerId);
         await pc.setRemoteDescription(new RTCSessionDescription(message.offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ type: 'answer', answer }));
+        ws.send(JSON.stringify({ type: 'answer', answer, target: peerId }));
       } else if (message.type === 'answer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(message.answer));
+        const pc = peersRef.current[peerId];
+        if (pc) await pc.setRemoteDescription(new RTCSessionDescription(message.answer));
       } else if (message.type === 'candidate') {
-        await pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+        const pc = peersRef.current[peerId];
+        if (pc) await pc.addIceCandidate(new RTCIceCandidate(message.candidate));
       }
     };
   };
@@ -543,20 +614,26 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
               ["encrypt", "decrypt"]
           );
           const exported = await crypto.subtle.exportKey("raw", key);
-          dataChannelRef.current!.send(JSON.stringify({ 
+          const e2eMessage = JSON.stringify({ 
               type: 'e2e_key', 
               key: Array.from(new Uint8Array(exported)) 
-          }));
+          });
+          Object.values(dataChannelsRef.current).forEach(ch => {
+              if (ch.readyState === 'open') ch.send(e2eMessage);
+          });
           setIsSecureE2EE(true);
 
           resumeOffsetRef.current = 0;
           if (startOffset === 0) {
-            dataChannelRef.current!.send(JSON.stringify({ 
+            const metaMessage = JSON.stringify({ 
                 type: 'meta', 
                 name: file.name, 
                 size: file.size,
                 encrypted: true
-            }));
+            });
+            Object.values(dataChannelsRef.current).forEach(ch => {
+                if (ch.readyState === 'open') ch.send(metaMessage);
+            });
           }
           
           // Wait to see if receiver requests a resume offset
@@ -572,7 +649,8 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                   return reject(new Error('Limit exceeded during transfer'));
               }
               while (offset < buffer.byteLength) {
-                  if (dataChannelRef.current!.bufferedAmount > 65535) {
+                  const isAnyBuffered = Object.values(dataChannelsRef.current).some(ch => ch.readyState === 'open' && ch.bufferedAmount > 65535);
+                  if (isAnyBuffered) {
                       setTimeout(sendChunk, 10);
                       return;
                   }
@@ -593,7 +671,9 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                       dataToSend = payload.buffer;
                   }
                   
-                  dataChannelRef.current!.send(dataToSend);
+                  Object.values(dataChannelsRef.current).forEach(ch => {
+                      if (ch.readyState === 'open') ch.send(dataToSend);
+                  });
                   offset += CHUNK_SIZE;
                   
                   setTransferProgress(Math.min(100, Math.round((offset / buffer.byteLength) * 100)));
@@ -601,9 +681,19 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
               }
 
               if (offset >= buffer.byteLength) {
-                  dataChannelRef.current!.send(JSON.stringify({ type: 'end' }));
+                  Object.values(dataChannelsRef.current).forEach(ch => {
+                      if (ch.readyState === 'open') ch.send(JSON.stringify({ type: 'end' }));
+                  });
                   setTransferSpeed('Complete');
                   setEta('');
+                  
+                  addHistoryRecord({
+                    id: crypto.randomUUID(),
+                    filename: file.name,
+                    size: file.size,
+                    date: new Date().toISOString(),
+                    role: 'sent'
+                  });
                   
                   setTimeout(() => {
                       setIsSecureE2EE(false);
@@ -616,7 +706,8 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
   };
 
   const sendAllFiles = async () => {
-    if (files.length === 0 || !dataChannelRef.current || dataChannelRef.current.readyState !== 'open') return;
+    const hasOpenChannel = Object.values(dataChannelsRef.current).some(ch => ch.readyState === 'open');
+    if (files.length === 0 || !hasOpenChannel) return;
 
     for (let i = 0; i < files.length; i++) {
         setCurrentFileIndex(i);
@@ -642,9 +733,12 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
   const sendChatMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || !dataChannelRef.current) return;
-    
-    dataChannelRef.current.send(JSON.stringify({ type: 'chat', text: chatInput }));
+    const hasOpenChannel = Object.values(dataChannelsRef.current).some(ch => ch.readyState === 'open');
+    if (!chatInput.trim() || !hasOpenChannel) return;
+
+    Object.values(dataChannelsRef.current).forEach(ch => {
+        if (ch.readyState === 'open') ch.send(JSON.stringify({ type: 'chat', text: chatInput }));
+    });
     setMessages(prev => [...prev, { sender: 'You', text: chatInput }]);
     setChatInput('');
   };
@@ -783,6 +877,44 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
         </div>
       )}
 
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 max-w-md w-full shadow-2xl relative border border-slate-200 dark:border-slate-800 flex flex-col max-h-[80vh]">
+            <button 
+              onClick={() => setShowHistoryModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors z-[110]"
+            >
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h3 className="text-xl font-extrabold text-slate-800 dark:text-white mb-2">Transfer History</h3>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+              Your recent secure transfers. This data is only saved in your browser.
+            </p>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+              {transferHistory.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 font-medium">No transfers yet.</div>
+              ) : (
+                transferHistory.map(record => (
+                  <div key={record.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl flex items-center gap-3 border border-slate-100 dark:border-slate-800">
+                    <div className={`p-2 rounded-lg ${record.role === 'sent' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                      {record.role === 'sent' ? <UploadCloud className="w-5 h-5" /> : <FileIcon className="w-5 h-5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{record.filename}</p>
+                      <p className="text-xs font-medium text-slate-500 mt-0.5">
+                        {record.role === 'sent' ? 'Sent' : 'Received'} • {(record.size / 1024 / 1024).toFixed(2)} MB • {new Date(record.date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QR Scanner Modal */}
       {showQRScanner && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -820,6 +952,10 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                   <FileIcon className="w-4 h-4 text-blue-500" />
                   Up to 5GB Daily
                </div>
+               <button onClick={() => setShowHistoryModal(true)} className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                  <History className="w-4 h-4 text-purple-500" />
+                  History
+               </button>
             </div>
           </div>
         ) : (
@@ -1003,7 +1139,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
               <div className="flex items-center justify-between mb-8 text-emerald-700 bg-emerald-50/80 border border-emerald-100/80 px-5 py-3 rounded-xl w-full shadow-sm">
                 <div className="flex items-center gap-2.5">
                   <CheckCircle className="w-5 h-5 text-emerald-500" />
-                  <span className="font-bold text-[15px]">Securely Connected</span>
+                  <span className="font-bold text-[15px]">Connected to {peerCount} {peerCount === 1 ? 'Peer' : 'Peers'}</span>
                 </div>
                 <button onClick={resetRoom} className="text-slate-400 hover:text-slate-700 transition-colors bg-white p-1.5 rounded-md shadow-sm border border-slate-200/50" title="Disconnect">
                    <LogOut className="w-4 h-4" />

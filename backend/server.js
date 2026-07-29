@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -83,14 +84,22 @@ wss.on('connection', (ws, req) => {
   }
   const roomId = urlParts[2];
   
+  ws.clientId = crypto.randomUUID();
+
   if (!rooms.has(roomId)) {
     rooms.set(roomId, new Set());
   }
   rooms.get(roomId).add(ws);
+  
+  // Inform the client of their ID
+  ws.send(JSON.stringify({ type: 'welcome', clientId: ws.clientId }));
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
+      
+      // Attach from ID
+      data.from = ws.clientId;
       
       // Enforce 5GB limit on file metadata declaration
       if (data.type === 'meta') {
@@ -106,12 +115,22 @@ wss.on('connection', (ws, req) => {
         }
       }
 
-      // Broadcast to other peers in the room
       const room = rooms.get(roomId);
       if (room) {
-        for (const client of room) {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(message.toString());
+        if (data.target) {
+          // Route to specific peer
+          for (const client of room) {
+            if (client.clientId === data.target && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(data));
+              break;
+            }
+          }
+        } else {
+          // Broadcast to other peers in the room
+          for (const client of room) {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(data));
+            }
           }
         }
       }
@@ -124,6 +143,13 @@ wss.on('connection', (ws, req) => {
     const room = rooms.get(roomId);
     if (room) {
       room.delete(ws);
+      // Notify others that this peer left
+      for (const client of room) {
+          if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'leave', from: ws.clientId }));
+          }
+      }
+      
       if (room.size === 0) {
         rooms.delete(roomId);
       }
