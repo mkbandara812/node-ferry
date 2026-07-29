@@ -1,0 +1,16 @@
+{
+  "name": "NodeFerry",
+  "short_name": "NodeFerry",
+  "description": "Secure P2P File Sharing Application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#3B82F6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
