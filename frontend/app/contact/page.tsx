@@ -13,23 +13,27 @@ export default function Contact() {
         <p className="text-slate-500 text-lg md:text-xl font-medium">Have a question, feedback, or need support? Drop us a line below.</p>
       </div>
       
-      <form className="bg-white p-8 md:p-10 rounded-[2rem] border border-slate-200/60 shadow-sm flex flex-col gap-6 w-full">
+      <form action="https://formsubmit.co/support@nodeferry.com" method="POST" className="bg-white p-8 md:p-10 rounded-[2rem] border border-slate-200/60 shadow-sm flex flex-col gap-6 w-full">
+        {/* Anti-spam and Config fields */}
+        <input type="hidden" name="_subject" value="New Support Message from NodeFerry" />
+        <input type="hidden" name="_template" value="table" />
+        
         <div className="flex flex-col gap-2">
           <label htmlFor="name" className="text-sm font-bold text-slate-700 ml-1">Full Name</label>
-          <input type="text" id="name" className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 font-medium" placeholder="Jane Doe" />
+          <input type="text" id="name" name="name" required className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 font-medium" placeholder="Jane Doe" />
         </div>
         
         <div className="flex flex-col gap-2">
           <label htmlFor="email" className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
-          <input type="email" id="email" className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 font-medium" placeholder="jane@example.com" />
+          <input type="email" id="email" name="email" required className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 font-medium" placeholder="jane@example.com" />
         </div>
 
         <div className="flex flex-col gap-2">
           <label htmlFor="message" className="text-sm font-bold text-slate-700 ml-1">Your Message</label>
-          <textarea id="message" rows={5} className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none text-slate-900 font-medium" placeholder="How can we help you?"></textarea>
+          <textarea id="message" name="message" required rows={5} className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none text-slate-900 font-medium" placeholder="How can we help you?"></textarea>
         </div>
 
-        <button type="button" className="mt-4 w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm shadow-blue-500/20 transition-all active:scale-95 text-[15px]">
+        <button type="submit" className="mt-4 w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm shadow-blue-500/20 transition-all active:scale-95 text-[15px]">
           Send Message
         </button>
       </form>
