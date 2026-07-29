@@ -587,7 +587,6 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
           if (limitError) return reject(new Error('Limit exceeded'));
           
           const CHUNK_SIZE = 16 * 1024;
-          const buffer = await file.arrayBuffer();
           let offset = startOffset;
           lastChunkTimeRef.current = 0;
 
@@ -648,22 +647,25 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
               if (limitError) {
                   return reject(new Error('Limit exceeded during transfer'));
               }
-              while (offset < buffer.byteLength) {
+              while (offset < file.size) {
                   const isAnyBuffered = Object.values(dataChannelsRef.current).some(ch => ch.readyState === 'open' && ch.bufferedAmount > 65535);
                   if (isAnyBuffered) {
                       setTimeout(sendChunk, 10);
                       return;
                   }
                   
-                  const chunk = buffer.slice(offset, offset + CHUNK_SIZE);
-                  let dataToSend: ArrayBuffer = chunk;
+                  const end = Math.min(offset + CHUNK_SIZE, file.size);
+                  const chunkBlob = file.slice(offset, end);
+                  const chunkArrayBuffer = await chunkBlob.arrayBuffer();
+                  
+                  let dataToSend: ArrayBuffer = chunkArrayBuffer;
 
                   if (key) {
                       const iv = crypto.getRandomValues(new Uint8Array(12));
                       const encrypted = await crypto.subtle.encrypt(
                           { name: "AES-GCM", iv: iv },
                           key,
-                          chunk
+                          chunkArrayBuffer
                       );
                       const payload = new Uint8Array(iv.length + encrypted.byteLength);
                       payload.set(iv, 0);
@@ -674,13 +676,13 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                   Object.values(dataChannelsRef.current).forEach(ch => {
                       if (ch.readyState === 'open') ch.send(dataToSend);
                   });
-                  offset += CHUNK_SIZE;
+                  offset = end;
                   
-                  setTransferProgress(Math.min(100, Math.round((offset / buffer.byteLength) * 100)));
-                  calculateAnalytics(offset, buffer.byteLength);
+                  setTransferProgress(Math.min(100, Math.round((offset / file.size) * 100)));
+                  calculateAnalytics(offset, file.size);
               }
 
-              if (offset >= buffer.byteLength) {
+              if (offset >= file.size) {
                   Object.values(dataChannelsRef.current).forEach(ch => {
                       if (ch.readyState === 'open') ch.send(JSON.stringify({ type: 'end' }));
                   });
