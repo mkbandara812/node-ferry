@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import ChatBot from "@/components/ChatBot";
 import { Analytics } from "@vercel/analytics/react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
@@ -59,6 +60,7 @@ export default function RootLayout({
           <Header />
           <main className="flex-1 flex flex-col items-center">{children}</main>
           <Footer />
+          <ChatBot />
           <Analytics />
         </ThemeProvider>
         <script
