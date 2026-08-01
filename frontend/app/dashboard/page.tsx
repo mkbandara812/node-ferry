@@ -132,9 +132,22 @@ export default function DashboardPage() {
                             <p className="text-emerald-700/80 dark:text-emerald-300/80 font-medium text-sm">For every friend who signs up using your link, they get 25 credits!</p>
                         </div>
 
-                        <div className="bg-white/60 dark:bg-slate-950/40 border border-emerald-200/60 dark:border-emerald-800/60 rounded-xl p-1 pl-4 flex items-center justify-between mb-4 shadow-inner">
+                        <div className="bg-white/60 dark:bg-slate-950/40 border border-emerald-200/60 dark:border-emerald-800/60 rounded-xl p-1 pl-4 flex items-center justify-between mb-3 shadow-inner">
                             <span className="font-mono font-bold text-emerald-800 dark:text-emerald-200 truncate">{window.location.origin}/?ref={referralCode}</span>
-                            <button onClick={copyReferralLink} className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-colors active:scale-95 shrink-0 ml-2">
+                            <button onClick={copyReferralLink} className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-colors active:scale-95 shrink-0 ml-2" title="Copy Link">
+                                <Copy className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="bg-white/60 dark:bg-slate-950/40 border border-emerald-200/60 dark:border-emerald-800/60 rounded-xl p-1 pl-4 flex items-center justify-between mb-4 shadow-inner">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-emerald-600/70 uppercase tracking-wider">Code:</span>
+                                <span className="font-mono font-black text-emerald-800 dark:text-emerald-200 text-lg">{referralCode}</span>
+                            </div>
+                            <button onClick={() => {
+                                navigator.clipboard.writeText(referralCode);
+                                toast.success("Referral code copied!");
+                            }} className="p-2.5 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-lg shadow-sm transition-colors active:scale-95 shrink-0 ml-2" title="Copy Code">
                                 <Copy className="w-4 h-4" />
                             </button>
                         </div>

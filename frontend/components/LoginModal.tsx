@@ -15,6 +15,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    const [manualRefCode, setManualRefCode] = useState('');
 
     if (!isOpen) return null;
 
@@ -44,7 +45,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                     
                     // Create users_credits record (if triggers aren't set up on backend)
                     if (data.user) {
-                        const refCode = localStorage.getItem('nodeferry_ref_code');
+                        const refCode = manualRefCode || localStorage.getItem('nodeferry_ref_code');
                         await fetch('/api/user/init', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -108,6 +109,21 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                             />
                         </div>
                     </div>
+
+                    {!isLogin && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Referral Code <span className="text-slate-600 text-xs">(Optional)</span></label>
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    value={manualRefCode}
+                                    onChange={(e) => setManualRefCode(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                                    placeholder="Enter friend's code to get 25 credits"
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {error && <div className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">{error}</div>}
                     {message && <div className="text-green-400 text-sm bg-green-500/10 p-3 rounded-lg border border-green-500/20">{message}</div>}
