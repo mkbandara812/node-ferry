@@ -7,6 +7,7 @@ import { ThemeToggle } from './ThemeToggle';
 import LoginModal from './LoginModal';
 import { supabase } from '@/utils/supabaseClient';
 import { User } from '@supabase/supabase-js';
+import toast from 'react-hot-toast';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -109,26 +110,38 @@ export default function Header() {
                 </div>
 
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 top-full mt-3 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 overflow-hidden z-50">
-                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
-                        <p className="text-xs text-slate-500 font-medium truncate">{user.email}</p>
+                <div className="absolute right-0 top-full mt-3 w-64 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 overflow-hidden z-50">
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col gap-0.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Signed in as</span>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 font-semibold truncate">{user.email}</p>
                     </div>
-                    <div className="p-2 flex flex-col gap-1">
-                        <Link href="/pricing" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                            <Zap className="w-4 h-4 text-purple-500" />
-                            Top Up Credits
+                    <div className="p-2 flex flex-col">
+                        <Link href="/pricing" className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group/item">
+                            <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg group-hover/item:scale-110 transition-transform">
+                                    <Zap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                Top Up Credits
+                            </div>
                         </Link>
                         {referralCode && (
                             <button onClick={() => {
                                 navigator.clipboard.writeText(`${window.location.origin}/?ref=${referralCode}`);
-                                alert('Referral link copied! Share with friends to get 50 credits each.');
-                            }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors w-full text-left">
-                                <Coins className="w-4 h-4" />
-                                Copy Referral Link
+                                toast.success('Referral link copied! Share to get 50 credits.');
+                            }} className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors w-full text-left group/item mt-1">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg group-hover/item:scale-110 transition-transform">
+                                        <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    Copy Referral Link
+                                </div>
                             </button>
                         )}
-                        <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors w-full text-left">
-                            <LogOut className="w-4 h-4" />
+                        <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+                        <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-colors w-full text-left group/item">
+                            <div className="p-1.5 bg-slate-100 dark:bg-slate-800 group-hover/item:bg-red-100 dark:group-hover/item:bg-red-900/30 rounded-lg transition-colors group-hover/item:scale-110">
+                                <LogOut className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover/item:text-red-600 dark:group-hover/item:text-red-400 transition-colors" />
+                            </div>
                             Log out
                         </button>
                     </div>

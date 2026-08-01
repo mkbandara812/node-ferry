@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { UploadCloud, CheckCircle, File as FileIcon, Lock, ShieldAlert, ShieldCheck, Send, LogOut, Coffee, History, X } from 'lucide-react';
 import { get, set } from 'idb-keyval';
+import toast from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 
 export interface TransferRecord {
@@ -1097,7 +1098,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                   <button 
                   onClick={() => {
                       navigator.clipboard.writeText(cloudLink);
-                      alert('Cloud link copied!');
+                      toast.success('Cloud link copied!');
                   }}
                   className="w-full px-4 py-4 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-bold transition-colors shadow-sm"
                   >
@@ -1253,7 +1254,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                   <button 
                   onClick={() => {
                       navigator.clipboard.writeText(`${baseUrl}?room=${roomId}`);
-                      alert('Link copied!');
+                      toast.success('Link copied!');
                   }}
                   className="w-full px-4 py-4 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-bold transition-colors shadow-sm"
                   >

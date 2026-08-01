@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { Shield, Zap, DollarSign, Gift, Info, ChevronRight, HardDrive, Clock, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '@/utils/supabaseClient';
 import { User } from '@supabase/supabase-js';
 
@@ -30,7 +31,7 @@ export default function PricingPage() {
 
     const handleApprove = async (data: any, actions: any, creditsToGive: number) => {
         if (!user) {
-            alert("You must be logged in to receive credits!");
+            toast.error("You must be logged in to receive credits!");
             return;
         }
 
@@ -46,10 +47,10 @@ export default function PricingPage() {
             });
 
             if (res.ok) {
-                alert(`Payment successful! You received ${creditsToGive} credits.`);
+                toast.success(`Payment successful! You received ${creditsToGive} credits.`);
                 window.location.reload();
             } else {
-                alert("Payment verified, but failed to add credits. Please contact support.");
+                toast.error("Payment verified, but failed to add credits. Please contact support.");
             }
         } catch (e) {
             console.error(e);

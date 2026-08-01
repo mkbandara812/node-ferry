@@ -7,6 +7,7 @@ import ChatBot from "@/components/ChatBot";
 import { Analytics } from "@vercel/analytics/react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -61,6 +62,7 @@ export default function RootLayout({
           <main className="flex-1 flex flex-col items-center">{children}</main>
           <Footer />
           <ChatBot />
+          <Toaster position="bottom-center" />
           <Analytics />
         </ThemeProvider>
         <script
