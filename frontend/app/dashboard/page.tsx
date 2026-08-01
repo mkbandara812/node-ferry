@@ -128,8 +128,8 @@ export default function DashboardPage() {
                             <Users className="w-4 h-4" /> Referral Program
                         </h2>
                         <div className="mb-6">
-                            <h3 className="text-2xl font-black text-emerald-900 dark:text-emerald-50 mb-1">Earn 50 Free Credits</h3>
-                            <p className="text-emerald-700/80 dark:text-emerald-300/80 font-medium text-sm">For every friend who signs up using your link, they get 25 credits!</p>
+                            <h3 className="text-2xl font-black text-emerald-900 dark:text-emerald-50 mb-1">Earn 10 Free Credits</h3>
+                            <p className="text-emerald-700/80 dark:text-emerald-300/80 font-medium text-sm">For every friend who signs up using your link, they get 5 credits!</p>
                         </div>
 
                         <div className="bg-white/60 dark:bg-slate-950/40 border border-emerald-200/60 dark:border-emerald-800/60 rounded-xl p-1 pl-4 flex items-center justify-between mb-3 shadow-inner">

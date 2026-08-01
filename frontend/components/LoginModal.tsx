@@ -119,7 +119,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                                     value={manualRefCode}
                                     onChange={(e) => setManualRefCode(e.target.value)}
                                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                                    placeholder="Enter friend's code to get 25 credits"
+                                    placeholder="Enter friend's code to get 5 credits"
                                 />
                             </div>
                         </div>

@@ -135,7 +135,7 @@ export default function Header() {
                         {referralCode && (
                             <button onClick={() => {
                                 navigator.clipboard.writeText(`${window.location.origin}/?ref=${referralCode}`);
-                                toast.success('Referral link copied! Share to get 50 credits.');
+                                toast.success('Referral link copied! Share to get 10 credits.');
                             }} className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors w-full text-left group/item mt-1">
                                 <div className="flex items-center gap-3">
                                     <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg group-hover/item:scale-110 transition-transform">
