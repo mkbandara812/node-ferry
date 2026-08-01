@@ -66,7 +66,7 @@ export default function RootLayout({
         
         {/* Crisp Chatbot */}
         <Script id="crisp-widget" strategy="afterInteractive" dangerouslySetInnerHTML={{
-          __html: `window.$crisp=[];window.CRISP_WEBSITE_ID="bb349618-1f77-4d32-acd1-eb4acfd500ce";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();`
+          __html: `window.$crisp=[];window.CRISP_WEBSITE_ID="7061e852-5878-4bbd-90ee-f2cf368986a3";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();`
         }} />
 
         <script
