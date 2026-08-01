@@ -29,6 +29,8 @@ export default function PricingPage() {
     const totalCustomPrice = Number((rawCost + paypalFixedFee).toFixed(2));
     const creditsToReceive = customGB * retentionDays * 10;
 
+    const [checkoutItem, setCheckoutItem] = useState<{name: string, price: string, credits: number} | null>(null);
+
     const handleApprove = async (data: any, actions: any, creditsToGive: number) => {
         if (!user) {
             toast.error("You must be logged in to receive credits!");
@@ -42,12 +44,14 @@ export default function PricingPage() {
                 body: JSON.stringify({
                     orderID: data.orderID,
                     creditsToGive,
-                    userId: user.id
+                    userId: user.id,
+                    amount_usd: checkoutItem ? Number(checkoutItem.price) : 0
                 })
             });
 
             if (res.ok) {
                 toast.success(`Payment successful! You received ${creditsToGive} credits.`);
+                setCheckoutItem(null);
                 window.location.reload();
             } else {
                 toast.error("Payment verified, but failed to add credits. Please contact support.");
@@ -55,6 +59,14 @@ export default function PricingPage() {
         } catch (e) {
             console.error(e);
         }
+    };
+
+    const handleBuyClick = (name: string, price: string, credits: number) => {
+        if (!user) {
+            toast.error("Please log in to purchase credits.");
+            return;
+        }
+        setCheckoutItem({ name, price, credits });
     };
 
     return (
@@ -167,23 +179,14 @@ export default function PricingPage() {
                                 </div>
                             </div>
 
-                            <div className={`transition-opacity duration-300 ${!user ? "opacity-50 pointer-events-none grayscale" : ""}`}>
-                                <PayPalScriptProvider options={{ "clientId": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "test", currency: "USD" }}>
-                                    <PayPalButtons 
-                                        style={{ layout: "vertical", color: "blue", shape: "rect", height: 50 }}
-                                        createOrder={(data, actions) => {
-                                            return actions.order.create({
-                                                intent: "CAPTURE",
-                                                purchase_units: [{
-                                                    amount: { value: totalCustomPrice.toString(), currency_code: "USD" },
-                                                    description: `${creditsToReceive} Credits for NodeFerry`
-                                                }]
-                                            });
-                                        }}
-                                        onApprove={(data, actions) => handleApprove(data, actions, creditsToReceive)}
-                                    />
-                                </PayPalScriptProvider>
-                            </div>
+                            <button 
+                                onClick={() => handleBuyClick('Custom Pack', totalCustomPrice.toString(), creditsToReceive)}
+                                className={`w-full py-4 rounded-2xl font-bold text-lg text-white transition-all transform active:scale-[0.98] ${
+                                    user ? 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl' : 'bg-slate-400 cursor-not-allowed'
+                                }`}
+                            >
+                                Checkout Custom Pack
+                            </button>
                         </div>
                     </div>
 
@@ -196,7 +199,7 @@ export default function PricingPage() {
                             </div>
                             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-400 to-purple-400 dark:from-indigo-500 dark:to-purple-500 rounded-[2.5rem] blur opacity-10 dark:opacity-20 group-hover:opacity-20 dark:group-hover:opacity-30 transition duration-1000 group-hover:duration-200 pointer-events-none"></div>
                             
-                            <div className="relative">
+                            <div className="relative flex flex-col h-full">
                                 <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2">Starter Pack</h3>
                                 <p className="text-indigo-700/80 dark:text-indigo-200/70 font-medium mb-8">Perfect for occasional large transfers.</p>
                                 
@@ -219,27 +222,18 @@ export default function PricingPage() {
                                     </div>
                                 </div>
 
-                                <div className={`mt-auto ${!user ? "opacity-50 pointer-events-none grayscale" : ""}`}>
-                                    <PayPalScriptProvider options={{ "clientId": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "test", currency: "USD" }}>
-                                        <PayPalButtons 
-                                            style={{ layout: "vertical", color: "gold", shape: "rect", height: 45 }}
-                                            createOrder={(data, actions) => {
-                                                return actions.order.create({
-                                                    intent: "CAPTURE",
-                                                    purchase_units: [{
-                                                        amount: { value: "2.00", currency_code: "USD" },
-                                                        description: `2000 Credits for NodeFerry`
-                                                    }]
-                                                });
-                                            }}
-                                            onApprove={(data, actions) => handleApprove(data, actions, 2000)}
-                                        />
-                                    </PayPalScriptProvider>
-                                </div>
+                                <button 
+                                    onClick={() => handleBuyClick('Starter Pack', '2.00', 2000)}
+                                    className={`mt-auto w-full py-3.5 rounded-2xl font-bold text-base text-white transition-all transform active:scale-[0.98] ${
+                                        user ? 'bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg' : 'bg-slate-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    Get Starter Pack
+                                </button>
                             </div>
                         </div>
 
-                        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 rounded-[2.5rem] p-8 relative overflow-hidden shadow-lg dark:shadow-none">
+                        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 rounded-[2.5rem] p-8 relative overflow-hidden shadow-lg dark:shadow-none flex flex-col">
                             <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mb-1">Pro Pack</h3>
                             <p className="text-slate-500 dark:text-slate-400 font-medium mb-6 text-sm">Save 15% on transaction fees.</p>
                             
@@ -247,35 +241,65 @@ export default function PricingPage() {
                                 <span className="text-3xl font-black text-slate-900 dark:text-white">$5.00</span>
                             </div>
                             
-                            <div className="space-y-3 mb-6">
+                            <div className="space-y-3 mb-8">
                                 <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-sm font-semibold">
                                     <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
                                     <span><strong className="text-slate-900 dark:text-white">6,000</strong> Credits (600 GB-Days)</span>
                                 </div>
                             </div>
 
-                            <div className={`${!user ? "opacity-50 pointer-events-none grayscale" : ""}`}>
-                                <PayPalScriptProvider options={{ "clientId": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "test", currency: "USD" }}>
-                                    <PayPalButtons 
-                                        style={{ layout: "vertical", color: "gold", shape: "rect", height: 40 }}
-                                        createOrder={(data, actions) => {
-                                            return actions.order.create({
-                                                intent: "CAPTURE",
-                                                purchase_units: [{
-                                                    amount: { value: "5.00", currency_code: "USD" },
-                                                    description: `6000 Credits for NodeFerry`
-                                                }]
-                                            });
-                                        }}
-                                        onApprove={(data, actions) => handleApprove(data, actions, 6000)}
-                                    />
-                                </PayPalScriptProvider>
-                            </div>
+                            <button 
+                                onClick={() => handleBuyClick('Pro Pack', '5.00', 6000)}
+                                className={`mt-auto w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all transform active:scale-[0.98] ${
+                                    user ? 'bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 shadow-md' : 'bg-slate-400 cursor-not-allowed'
+                                }`}
+                            >
+                                Get Pro Pack
+                            </button>
                         </div>
 
                     </div>
                 </div>
             </div>
+
+            {/* Checkout Modal */}
+            {checkoutItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm transition-opacity" onClick={() => setCheckoutItem(null)}></div>
+                    <div className="relative bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+                        <div className="text-center mb-8">
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">{checkoutItem.name}</h3>
+                            <p className="text-slate-500 dark:text-slate-400 font-medium">You are purchasing {checkoutItem.credits.toLocaleString()} Credits for ${checkoutItem.price}.</p>
+                        </div>
+
+                        <div className="min-h-[150px]">
+                            <PayPalScriptProvider options={{ "clientId": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "test", currency: "USD" }}>
+                                <PayPalButtons 
+                                    style={{ layout: "vertical", color: "blue", shape: "rect", height: 45 }}
+                                    createOrder={(data, actions) => {
+                                        return actions.order.create({
+                                            intent: "CAPTURE",
+                                            purchase_units: [{
+                                                amount: { value: checkoutItem.price, currency_code: "USD" },
+                                                description: `${checkoutItem.credits} Credits for NodeFerry`
+                                            }]
+                                        });
+                                    }}
+                                    onApprove={(data, actions) => handleApprove(data, actions, checkoutItem.credits)}
+                                    onCancel={() => setCheckoutItem(null)}
+                                />
+                            </PayPalScriptProvider>
+                        </div>
+                        
+                        <button 
+                            onClick={() => setCheckoutItem(null)}
+                            className="mt-6 w-full py-3 rounded-xl font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

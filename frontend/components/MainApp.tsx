@@ -840,6 +840,9 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
           
           playSound('success');
           confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+          setTimeout(() => {
+              setShowDonationPopup(true);
+          }, 1500);
       } catch (e: any) {
           console.error(e);
           setAuthError(e.message || "Failed to upload to cloud");

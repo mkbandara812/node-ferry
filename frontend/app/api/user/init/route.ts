@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
             if (referrerData) {
                 referrerId = referrerData.user_id;
-                initialCredits = 50; // Give new user 50 bonus credits
+                initialCredits = 25; // Give new user 25 bonus credits
 
                 // Give referrer 50 bonus credits
                 await supabase

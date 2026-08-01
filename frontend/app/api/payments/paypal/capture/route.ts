@@ -36,7 +36,7 @@ async function getPayPalAccessToken() {
 
 export async function POST(req: NextRequest) {
     try {
-        const { orderID, creditsToGive, userId } = await req.json();
+        const { orderID, creditsToGive, userId, amount_usd } = await req.json();
 
         if (!orderID || !creditsToGive || !userId) {
             return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -96,6 +96,16 @@ export async function POST(req: NextRequest) {
                 .from('users_credits')
                 .insert([{ user_id: userId, credits: newTotal }]);
         }
+
+        // 3. Log into Payment History
+        const amountUsd = amount_usd || 0;
+        await supabase
+            .from('payment_history')
+            .insert([{ 
+                user_id: userId, 
+                credits_bought: creditsToGive, 
+                amount_usd: amountUsd 
+            }]);
 
         return NextResponse.json({ success: true, newTotal });
 

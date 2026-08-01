@@ -116,7 +116,15 @@ export default function Header() {
                         <p className="text-sm text-slate-700 dark:text-slate-300 font-semibold truncate">{user.email}</p>
                     </div>
                     <div className="p-2 flex flex-col">
-                        <Link href="/pricing" className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group/item">
+                        <Link href="/dashboard" className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group/item">
+                            <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover/item:scale-110 transition-transform">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 dark:text-blue-400"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                                </div>
+                                Dashboard
+                            </div>
+                        </Link>
+                        <Link href="/pricing" className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group/item mt-1">
                             <div className="flex items-center gap-3">
                                 <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg group-hover/item:scale-110 transition-transform">
                                     <Zap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
