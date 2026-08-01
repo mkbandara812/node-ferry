@@ -55,7 +55,7 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-transparent text-slate-900 dark:text-slate-100 relative" suppressHydrationWarning>
         <Script defer src="https://cloud.umami.is/script.js" data-website-id="d3c67e94-c651-44dd-98af-9d40fa3a16e9" />
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
           <div className="premium-bg"></div>
           <Header />
           <main className="flex-1 flex flex-col items-center">{children}</main>

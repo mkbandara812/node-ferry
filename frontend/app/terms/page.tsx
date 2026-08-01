@@ -34,14 +34,22 @@ export default function TermsAndConditions() {
           NodeFerry is provided "as is" and "as available", without any warranties of any kind, either express or implied. We make no warranties regarding the reliability, accuracy, or availability of the service. We shall not be liable for any indirect, incidental, or consequential damages resulting from your use of the service, network failures, or any file transfers made through it. You use this service entirely at your own risk.
         </p>
 
-        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">4. Modifications to the Service and Terms</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">4. Refund Policy</h2>
+        <p>
+          NodeFerry offers a Pay-As-You-Go premium credit system for transferring files larger than our free limit. Because these credits are digital goods and are used instantly to cover our infrastructure costs (Cloudflare R2 bandwidth and storage), <strong>all credit purchases are strictly non-refundable</strong>.
+        </p>
+        <p className="mt-4">
+          If you experience a technical failure on our end that caused a failed transfer while still deducting your credits, please contact our support team. We will review such cases individually and may issue replacement credits to your account at our sole discretion. We do not issue cash refunds.
+        </p>
+
+        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">5. Modifications to the Service and Terms</h2>
         <p>
           We reserve the right to modify or discontinue the hosted service at any time without notice. We also reserve the right to update these Terms & Conditions. Continued use of the service after such changes constitutes your consent to the changes.
         </p>
 
-        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">5. Contact Us</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">6. Contact Us</h2>
         <p>
-          If you have any questions about these Terms & Conditions, please contact us at: <a href="mailto:support@nodeferry.com" className="text-blue-600 font-bold hover:underline">support@nodeferry.com</a>.
+          If you have any questions about these Terms, Conditions, or our Refund Policy, please contact us at: <a href="mailto:support@nodeferry.com" className="text-blue-600 font-bold hover:underline">support@nodeferry.com</a>.
         </p>
       </div>
     </div>

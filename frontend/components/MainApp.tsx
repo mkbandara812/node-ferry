@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { UploadCloud, CheckCircle, File as FileIcon, Lock, ShieldAlert, ShieldCheck, Send, LogOut, Coffee, History } from 'lucide-react';
+import { UploadCloud, CheckCircle, File as FileIcon, Lock, ShieldAlert, ShieldCheck, Send, LogOut, Coffee, History, X } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 import confetti from 'canvas-confetti';
 
@@ -26,18 +26,29 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
   const [roomPassword, setRoomPassword] = useState<string>('');
   const [showPasswordPrompt, setShowPasswordPrompt] = useState<boolean>(false);
   const [showDonationPopup, setShowDonationPopup] = useState<boolean>(false);
-  const [showQuotaModal, setShowQuotaModal] = useState<boolean>(false);
   const [showQRScanner, setShowQRScanner] = useState<boolean>(false);
-  const [quotaForm, setQuotaForm] = useState({ reason: '', amount: '10GB', donatedBefore: 'No', planToDonate: 'Yes' });
-  const [quotaSubmitStatus, setQuotaSubmitStatus] = useState<string>('');
 
   const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+  const [transferMode, setTransferMode] = useState<'p2p' | 'cloud'>('p2p');
+  const [cloudLink, setCloudLink] = useState<string>('');
+
+  // Premium Cloud Link Configuration
+  const [cloudExpiry, setCloudExpiry] = useState<number>(24);
+  const [cloudBurnAfterReading, setCloudBurnAfterReading] = useState<boolean>(false);
+  const [cloudPassword, setCloudPassword] = useState<string>('');
 
   useEffect(() => {
     const saved = localStorage.getItem('nodeferry_history');
     if (saved) {
       try { setTransferHistory(JSON.parse(saved)); } catch (e) {}
+    }
+    
+    // Capture referral code from URL
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+        localStorage.setItem('nodeferry_ref_code', refCode);
     }
   }, []);
 
@@ -47,6 +58,10 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
       localStorage.setItem('nodeferry_history', JSON.stringify(newHistory));
       return newHistory;
     });
+  };
+
+  const removeFile = (idxToRemove: number) => {
+      setFiles(prev => prev.filter((_, i) => i !== idxToRemove));
   };
 
   const [joinPassword, setJoinPassword] = useState<string>('');
@@ -140,6 +155,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
     setIsSecureE2EE(false);
     setShowPasswordPrompt(false);
     setRoomPassword('');
+    setCloudLink('');
     
     window.history.pushState({}, '', window.location.pathname);
   };
@@ -733,6 +749,104 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
     }, 2000);
   };
 
+  const uploadCloudFiles = async () => {
+      if (files.length === 0) return;
+      const { generateKey, exportKeyToHex, encryptChunk, encryptMasterKey } = await import('../utils/cryptoCloud');
+      const { uploadToCloud } = await import('../utils/storageApi');
+      const { createClient } = await import('@supabase/supabase-js');
+      
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      setTransferProgress(0); // Indicate start
+      setTransferSpeed('Preparing encryption...');
+      
+      try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const userId = session?.user?.id;
+          
+          const fileToUpload = files[0];
+          
+          const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunk limit
+          const totalChunks = Math.ceil(fileToUpload.size / CHUNK_SIZE);
+          
+          const key = await generateKey();
+          let keyHex = await exportKeyToHex(key);
+          
+          let finalKeyParam = keyHex;
+          let saltParam = '';
+          
+          if (cloudPassword) {
+              setTransferSpeed('Encrypting Master Key...');
+              const { encryptedKeyHex, saltHex } = await encryptMasterKey(keyHex, cloudPassword);
+              finalKeyParam = encryptedKeyHex;
+              saltParam = saltHex;
+          }
+          
+          const uploadedChunkUrls: string[] = [];
+          
+          for (let i = 0; i < totalChunks; i++) {
+              setTransferSpeed(`Encrypting & Uploading chunk ${i + 1} of ${totalChunks}...`);
+              const start = i * CHUNK_SIZE;
+              const end = Math.min(start + CHUNK_SIZE, fileToUpload.size);
+              const chunk = fileToUpload.slice(start, end);
+              
+              const encryptedChunkBlob = await encryptChunk(chunk, keyHex, i);
+              
+              const result = await uploadToCloud(encryptedChunkBlob, `chunk_${i}.enc`, (p) => {
+                  const overallProgress = ((i + (p / 100)) / totalChunks) * 95;
+                  setTransferProgress(overallProgress);
+              });
+              
+              uploadedChunkUrls.push(result.downloadUrl);
+          }
+          
+          setTransferSpeed('Finalizing manifest...');
+          setTransferProgress(95);
+          
+          const manifest = {
+              name: fileToUpload.name,
+              size: fileToUpload.size,
+              chunks: uploadedChunkUrls
+          };
+          
+          const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+          const manifestResult = await uploadToCloud(manifestBlob, 'manifest.json', undefined, {
+              isManifest: true,
+              totalSize: fileToUpload.size,
+              expiryHours: cloudExpiry,
+              isBurnAfterReading: cloudBurnAfterReading,
+              userId: userId
+          });
+          
+          setTransferProgress(100);
+          setTransferSpeed('Complete');
+          
+          let linkParams = `id=${manifestResult.linkId}&key=${finalKeyParam}&name=${encodeURIComponent(fileToUpload.name)}`;
+          if (saltParam) linkParams += `&salt=${saltParam}`;
+          if (cloudPassword) linkParams += `&protected=1`;
+          
+          setCloudLink(`${baseUrl}/dl#${linkParams}`);
+          
+          addHistoryRecord({
+            id: crypto.randomUUID(),
+            filename: fileToUpload.name,
+            size: fileToUpload.size,
+            date: new Date().toISOString(),
+            role: 'sent'
+          });
+          
+          playSound('success');
+          confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      } catch (e: any) {
+          console.error(e);
+          setAuthError(e.message || "Failed to upload to cloud");
+          setTransferProgress(0);
+          setTransferSpeed('');
+      }
+  };
+
   const sendChatMessage = (e: React.FormEvent) => {
     e.preventDefault();
     const hasOpenChannel = Object.values(dataChannelsRef.current).some(ch => ch.readyState === 'open');
@@ -747,50 +861,6 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
 
   const sendPasswordAuth = () => {
       wsRef.current?.send(JSON.stringify({ type: 'auth', password: joinPassword }));
-  };
-
-  const submitQuotaRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setQuotaSubmitStatus('Submitting...');
-    try {
-      const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_URL || 'ws://localhost:8080';
-      const apiUrl = signalingUrl.replace('ws://', 'http://').replace('wss://', 'https://');
-      
-      // 1. Send Email via FormSubmit
-      await fetch(`https://formsubmit.co/ajax/support@nodeferry.com`, {
-          method: 'POST',
-          headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-              _subject: "New Quota Request from NodeFerry",
-              "Reason": quotaForm.reason,
-              "Requested Amount": quotaForm.amount,
-              "Donated Before": quotaForm.donatedBefore,
-              "Plans To Donate": quotaForm.planToDonate
-          })
-      });
-
-      // 2. Record request in backend
-      const response = await fetch(`${apiUrl}/request-quota`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(quotaForm)
-      });
-      
-      if (response.ok) {
-        setQuotaSubmitStatus('Request submitted! For faster approval, please email support@nodeferry.com');
-        setTimeout(() => {
-          setShowQuotaModal(false);
-          setQuotaSubmitStatus('');
-        }, 10000);
-      } else {
-        setQuotaSubmitStatus('Failed to submit. Please try again.');
-      }
-    } catch (error) {
-      setQuotaSubmitStatus('Network error. Is the server running?');
-    }
   };
 
   return (
@@ -846,55 +916,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
         </div>
       )}
 
-      {showQuotaModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-3xl w-full max-w-md flex flex-col gap-4 shadow-2xl text-slate-900 border border-slate-200/60 relative">
-            <button onClick={() => setShowQuotaModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-            <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Request Quota Increase</h2>
-            <p className="text-slate-500 text-sm font-medium">As a free service, we limit daily usage to ensure server stability. Let us know why you need more!</p>
-            
-            <form onSubmit={submitQuotaRequest} className="flex flex-col gap-4 mt-2">
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Why do you need more?</label>
-                    <textarea required value={quotaForm.reason} onChange={e => setQuotaForm({...quotaForm, reason: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none min-h-[80px]" placeholder="e.g. Transferring a video project to a client..."></textarea>
-                </div>
-                
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">How much per day?</label>
-                    <select value={quotaForm.amount} onChange={e => setQuotaForm({...quotaForm, amount: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
-                        <option value="10GB">10GB</option>
-                        <option value="25GB">25GB</option>
-                        <option value="50GB">50GB</option>
-                        <option value="Unlimited">Unlimited (Requires Admin Approval)</option>
-                    </select>
-                </div>
 
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Have you donated before?</label>
-                    <select value={quotaForm.donatedBefore} onChange={e => setQuotaForm({...quotaForm, donatedBefore: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Do you plan to donate?</label>
-                    <select value={quotaForm.planToDonate} onChange={e => setQuotaForm({...quotaForm, planToDonate: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
-                        <option value="Yes">Yes, I plan to support soon</option>
-                        <option value="No">No, I just need it for free</option>
-                    </select>
-                </div>
-
-                <button type="submit" className="mt-2 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-sm active:scale-95">
-                    Submit Request
-                </button>
-                {quotaSubmitStatus && <p className="text-center text-sm font-bold text-blue-600 mt-1">{quotaSubmitStatus}</p>}
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* History Modal */}
       {showHistoryModal && (
@@ -965,11 +987,11 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center xl:justify-start">
                <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  E2E Encrypted
+                  {transferMode === 'p2p' ? 'E2E Encrypted' : 'Encrypted Uploads'}
                </div>
                <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                   <FileIcon className="w-4 h-4 text-blue-500" />
-                  Up to 5GB Daily
+                  {transferMode === 'p2p' ? 'Up to 500MB Free / 5GB Daily' : 'Unlimited Size (Credits)'}
                </div>
                <button onClick={() => setShowHistoryModal(true)} className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer">
                   <History className="w-4 h-4 text-purple-500" />
@@ -1040,11 +1062,174 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                     <span className="font-bold text-sm">Quota Reached</span>
                   </div>
                   <span className="font-medium text-sm text-center leading-relaxed">{limitError}</span>
-                  <button onClick={() => setShowQuotaModal(true)} className="mt-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95">Request More Quota</button>
+                  <button onClick={() => { setTransferMode('cloud'); resetRoom(); }} className="mt-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95">Switch to Cloud Link</button>
               </div>
           )}
+          
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl mb-6 w-full">
+            <button 
+              onClick={() => { setTransferMode('p2p'); resetRoom(); }} 
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${transferMode === 'p2p' ? 'bg-white dark:bg-slate-900 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Live P2P
+            </button>
+            <button 
+              onClick={() => { setTransferMode('cloud'); resetRoom(); }} 
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${transferMode === 'cloud' ? 'bg-white dark:bg-slate-900 shadow-sm text-purple-600 dark:text-purple-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Cloud Link
+            </button>
+          </div>
 
-          {!connected ? (
+          {transferMode === 'cloud' && (
+            <div className="flex flex-col items-center w-full">
+              {cloudLink ? (
+                <div className="flex flex-col items-center space-y-5 w-full">
+                  <div className="bg-slate-50 dark:bg-white border border-slate-100 p-8 rounded-3xl relative w-full flex justify-center">
+                    <QRCodeSVG value={cloudLink} size={180} />
+                  </div>
+                  <div className="text-center w-full">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2 mb-1">
+                      Secure Link Generated
+                    </p>
+                  </div>
+                  
+                  <button 
+                  onClick={() => {
+                      navigator.clipboard.writeText(cloudLink);
+                      alert('Cloud link copied!');
+                  }}
+                  className="w-full px-4 py-4 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-bold transition-colors shadow-sm"
+                  >
+                  Copy Cloud Link
+                  </button>
+                  <button
+                  onClick={() => { resetRoom(); setCloudLink(''); }}
+                  className="w-full mt-1 px-4 py-3.5 text-slate-500 hover:bg-slate-50 hover:text-slate-700 rounded-xl font-semibold transition-colors text-sm"
+                  >
+                  Send Another
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-6 text-purple-700 bg-purple-50/80 border border-purple-100/80 px-5 py-3 rounded-xl w-full shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                      <Lock className="w-5 h-5 text-purple-500" />
+                      <span className="font-bold text-[14px]">Encrypted Cloud Link</span>
+                    </div>
+                  </div>
+                  
+                  <input type="file" id="fileInput" className="hidden" onChange={handleFileSelect} />
+                  
+                  <div 
+                  className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-dashed border-slate-200 hover:border-purple-400 rounded-2xl p-10 flex flex-col items-center justify-center transition-all group cursor-pointer text-center min-h-[220px]"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleFileDrop}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).tagName !== 'BUTTON') {
+                      document.getElementById('fileInput')?.click();
+                    }
+                  }}
+                  >
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4 group-hover:-translate-y-1 transition-transform">
+                      <UploadCloud className="w-8 h-8 text-purple-500" />
+                    </div>
+                    <p className="text-[17px] font-bold text-slate-800 mb-1">Select file to Encrypt</p>
+                    <p className="text-[13px] font-semibold text-slate-400 mb-4">Unlimited Size • Max Speed</p>
+                    <button onClick={() => document.getElementById('fileInput')?.click()} className="px-5 py-2.5 bg-purple-100 text-purple-700 font-bold rounded-lg text-sm hover:bg-purple-200 transition-colors">Select File</button>
+                  </div>
+
+                  {files.length > 0 && (
+                      <div className="flex flex-col w-full gap-3 mt-6">
+                        <div className="max-h-48 overflow-y-auto pr-1 flex flex-col gap-2.5">
+                          {files.map((f, idx) => (
+                              <div key={idx} className="flex items-center gap-3.5 w-full p-3 rounded-xl border bg-white border-slate-200/60 shadow-sm">
+                                  <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
+                                     <FileIcon className="w-4 h-4 text-slate-400" />
+                                  </div>
+                                  <span className="text-sm font-semibold truncate flex-1 text-left text-slate-700">{f.name}</span>
+                                  <span className="text-xs font-bold text-slate-400 shrink-0">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                                  <button onClick={(e) => { e.stopPropagation(); removeFile(idx); }} className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-500 transition-colors">
+                                     <X className="w-4 h-4" />
+                                  </button>
+                              </div>
+                          ))}
+                        </div>
+                        
+                        {transferProgress > 0 && transferProgress < 100 && (
+                            <div className="w-full flex flex-col gap-2 mt-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
+                                    <span>{transferSpeed || 'Working...'}</span>
+                                    <span className="text-purple-600">{Math.round(transferProgress)}%</span>
+                                </div>
+                                <div className="w-full bg-slate-200/60 rounded-full h-2 overflow-hidden">
+                                    <div 
+                                    className="bg-purple-600 h-2 rounded-full transition-all duration-300 relative" 
+                                    style={{ width: `${transferProgress}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        )}
+                      </div>
+                  )}
+                  
+                  {files.length > 0 && transferProgress === 0 && (
+                      <div className="flex flex-col w-full gap-4 mt-4 bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-700">
+                          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-2">
+                              <ShieldCheck className="w-4 h-4 text-purple-500" />
+                              Premium Security Settings
+                          </h3>
+                          
+                          <div className="flex flex-col gap-1.5">
+                              <label className="text-xs font-bold text-slate-500 uppercase">Link Expiry</label>
+                              <select 
+                                  value={cloudExpiry}
+                                  onChange={e => setCloudExpiry(Number(e.target.value))}
+                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+                              >
+                                  <option value={1}>1 Hour (0.5x Credits)</option>
+                                  <option value={24}>24 Hours (1x Credits)</option>
+                                  <option value={168}>7 Days (2x Credits)</option>
+                              </select>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                              <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Burn After Reading</span>
+                                  <span className="text-xs text-slate-500 font-medium">Delete automatically after 1 download</span>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                  <input type="checkbox" className="sr-only peer" checked={cloudBurnAfterReading} onChange={e => setCloudBurnAfterReading(e.target.checked)} />
+                                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                              </label>
+                          </div>
+                          
+                          <div className="flex flex-col gap-1.5">
+                              <label className="text-xs font-bold text-slate-500 uppercase">Password Protection (Optional)</label>
+                              <input 
+                                  type="password" 
+                                  value={cloudPassword}
+                                  onChange={e => setCloudPassword(e.target.value)}
+                                  placeholder="Leave blank for open access" 
+                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+                              />
+                          </div>
+                      </div>
+                  )}
+
+                  <button 
+                      onClick={(e) => { e.stopPropagation(); uploadCloudFiles(); }}
+                      disabled={files.length === 0 || (transferProgress > 0 && transferProgress < 100)}
+                      className="mt-6 w-full py-4 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 text-white disabled:cursor-not-allowed rounded-xl font-bold shadow-md shadow-purple-500/20 transition-all active:scale-95 text-[15px]"
+                  >
+                      {transferProgress > 0 && transferProgress < 100 ? `Processing...` : `Encrypt & Get Link`}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {transferMode === 'p2p' && !connected ? (
           <div className="flex flex-col items-center space-y-8">
               {roomId ? (
               <div className="flex flex-col items-center space-y-5 w-full">
@@ -1153,7 +1338,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
               </div>
               )}
           </div>
-          ) : (
+          ) : transferMode === 'p2p' && connected ? (
           <div className="flex flex-col items-center w-full">
               <div className="flex items-center justify-between mb-8 text-emerald-700 bg-emerald-50/80 border border-emerald-100/80 px-5 py-3 rounded-xl w-full shadow-sm">
                 <div className="flex items-center gap-2.5">
@@ -1227,7 +1412,12 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                             </div>
                             <span className="text-sm font-semibold truncate flex-1 text-left text-slate-700">{f.name}</span>
                             <span className="text-xs font-bold text-slate-400 shrink-0">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
-                            {idx === currentFileIndex && transferProgress === 100 && <CheckCircle className="w-5 h-5 text-emerald-500" />}
+                            {transferProgress === 0 && (
+                                <button onClick={(e) => { e.stopPropagation(); removeFile(idx); }} className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-500 transition-colors shrink-0">
+                                   <X className="w-4 h-4" />
+                                </button>
+                            )}
+                            {idx === currentFileIndex && transferProgress === 100 && <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />}
                         </div>
                     ))}
                   </div>
@@ -1312,7 +1502,7 @@ export default function MainApp({ initialRoomId }: { initialRoomId?: string } = 
                   {transferProgress > 0 && transferProgress < 100 ? `Transferring...` : `Send ${files.length} File${files.length !== 1 ? 's' : ''}`}
               </button>
           </div>
-          )}
+          ) : null}
         </div>
       </div>
 
