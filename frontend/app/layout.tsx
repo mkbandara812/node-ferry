@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import CustomChatbot from "@/components/CustomChatbot";
 import { Analytics } from "@vercel/analytics/react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
@@ -60,15 +61,11 @@ export default function RootLayout({
           <Header />
           <main className="flex-1 flex flex-col items-center">{children}</main>
           <Footer />
+          <CustomChatbot />
           <Toaster position="bottom-center" />
           <Analytics />
         </ThemeProvider>
         
-        {/* Crisp Chatbot */}
-        <Script id="crisp-widget" strategy="afterInteractive" dangerouslySetInnerHTML={{
-          __html: `window.$crisp=[];window.CRISP_WEBSITE_ID="7061e852-5878-4bbd-90ee-f2cf368986a3";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();`
-        }} />
-
         <script
           dangerouslySetInnerHTML={{
             __html: `
