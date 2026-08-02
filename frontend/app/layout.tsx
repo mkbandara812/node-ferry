@@ -20,14 +20,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://nodeferry.com"),
+  metadataBase: new URL("https://www.nodeferry.com"),
   title: "NodeFerry - Secure P2P File Sharing",
   description: "Instant, cross-network, peer-to-peer file sharing directly from your browser. No limits, pure speed.",
   keywords: ["file sharing", "p2p", "webrtc", "send files", "secure transfer", "nodeferry"],
   openGraph: {
     title: "NodeFerry - Send Files. Move Ideas.",
     description: "The simplest way to send big files around the world. No limits, pure peer-to-peer.",
-    url: "https://nodeferry.com",
+    url: "https://www.nodeferry.com",
     siteName: "NodeFerry",
     images: [
       {
