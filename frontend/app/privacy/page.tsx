@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy - NodeFerry',
+  title: 'Privacy Policy - Secure File Sharing | NodeFerry',
   description: 'NodeFerry Privacy Policy. Learn about what information we collect, how we use it, and how we ensure your file transfers remain strictly confidential.',
   alternates: {
     canonical: '/privacy',
@@ -22,13 +22,13 @@ export default function PrivacyPolicy() {
         </p>
 
         <div className="p-6 bg-blue-50/50 border border-blue-100 rounded-2xl">
-          <h2 className="text-2xl font-bold text-slate-900 mb-3 mt-0">1. End-to-End Encryption & Security</h2>
+          <h3 className="text-2xl font-bold text-slate-900 mb-3 mt-0">1. End-to-End Encryption & Security</h3>
           <p className="m-0">
             NodeFerry uses military-grade AES-GCM encryption for all transfers. Whether you are using our free Peer-to-Peer service or our Premium Cloud Link service, your files are encrypted locally in your browser before they ever leave your device. We do not hold the decryption keys, meaning <strong>we cannot view, access, or scan your files at any point.</strong>
           </p>
         </div>
 
-        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">2. Data We Collect</h2>
+        <h3 className="text-2xl font-bold text-slate-900 mt-10 mb-4">2. Data We Collect</h3>
         <p>
           <strong>For Guest Users:</strong> If you use our free services without logging in, we do not collect personal identifying information. We only temporarily handle connection metadata (Session Description Protocol) to establish P2P links, which is deleted immediately after connection. We also temporarily log IP addresses to enforce our 5GB daily fair-use limits.
         </p>
@@ -36,7 +36,7 @@ export default function PrivacyPolicy() {
           <strong>For Registered Users:</strong> To provide our Premium Pay-As-You-Go service, we collect your email address when you create an account. This is used solely for authentication and managing your credit balance.
         </p>
 
-        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">3. Third-Party Services</h2>
+        <h3 className="text-2xl font-bold text-slate-900 mt-10 mb-4">3. Third-Party Services</h3>
         <p>We partner with industry-leading providers to deliver a reliable experience:</p>
         <ul className="list-disc pl-6 space-y-2 marker:text-blue-500">
           <li><strong>Supabase:</strong> Used for secure user authentication and database management for premium credits.</li>
@@ -44,12 +44,12 @@ export default function PrivacyPolicy() {
           <li><strong>Cloudflare R2:</strong> Used to temporarily host encrypted files for our Premium Cloud Link users. Since all files are End-to-End Encrypted before upload, Cloudflare cannot read your data.</li>
         </ul>
 
-        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">4. Analytics</h2>
+        <h3 className="text-2xl font-bold text-slate-900 mt-10 mb-4">4. Analytics</h3>
         <p>
           We do not track individual file transfer metrics or store identifying information about who sends what. We may use privacy-respecting, aggregated analytics strictly to monitor server health, ensure service reliability, and understand website traffic patterns without identifying individual users.
         </p>
 
-        <h2 className="text-2xl font-bold text-slate-900 mt-10 mb-4">5. Contact Us</h2>
+        <h3 className="text-2xl font-bold text-slate-900 mt-10 mb-4">5. Contact Us</h3>
         <p>
           If you have any questions about this Privacy Policy, please contact us at: <a href="mailto:support@nodeferry.com" className="text-blue-600 font-bold hover:underline">support@nodeferry.com</a>.
         </p>

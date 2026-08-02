@@ -46,7 +46,7 @@ export default function Contact() {
           </svg>
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">Get in Touch</h1>
-        <p className="text-slate-500 text-lg md:text-xl font-medium">Have a question, feedback, or need support? Drop us a line below.</p>
+        <h2 className="text-slate-500 text-lg md:text-xl font-medium">Have a question, feedback, or need support? Drop us a line below.</h2>
       </div>
       
       <form onSubmit={handleSubmit} className="bg-white p-8 md:p-10 rounded-[2rem] border border-slate-200/60 shadow-sm flex flex-col gap-6 w-full relative">

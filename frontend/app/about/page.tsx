@@ -25,7 +25,7 @@ export default function About() {
               <path d="M12 8H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Our Mission</h2>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Our Mission</h3>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[17px]">
             NodeFerry was created with a single goal: to provide the fastest, most secure way to transfer files between devices. We use military-grade End-to-End Encryption, making it impossible for hackers to intercept your data. 
           </p>
@@ -37,7 +37,7 @@ export default function About() {
               <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">How It Works</h2>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">How It Works</h3>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[17px]">
             We offer two secure methods: 
             <br/><br/>
@@ -49,7 +49,7 @@ export default function About() {
       </div>
 
       <section className="mt-8 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-8 md:p-10 rounded-3xl shadow-sm">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Why Choose NodeFerry?</h2>
+        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Why Choose NodeFerry?</h3>
         <ul className="space-y-5 text-slate-600 dark:text-slate-400 text-[17px]">
           <li className="flex items-start gap-4">
             <div className="mt-1 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full"><svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg></div>

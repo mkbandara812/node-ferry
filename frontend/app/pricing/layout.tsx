@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Pricing - NodeFerry',
+  title: 'Pricing Plans - Pay As You Go | NodeFerry',
   description: 'NodeFerry pricing. Pay only for what you use with our credit system for large file transfers.',
   alternates: {
     canonical: '/pricing',
