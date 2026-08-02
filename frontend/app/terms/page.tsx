@@ -1,3 +1,13 @@
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Terms and Conditions - NodeFerry',
+  description: 'Read the Terms and Conditions for using NodeFerry. By accessing or using our free software and services, you agree to be bound by these terms.',
+  alternates: {
+    canonical: '/terms',
+  },
+};
+
 export default function TermsAndConditions() {
   return (
     <div className="w-full max-w-4xl mx-auto px-6 md:px-12 py-16 md:py-24 flex flex-col gap-10">

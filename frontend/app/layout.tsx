@@ -20,6 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://nodeferry.com"),
   title: "NodeFerry - Secure P2P File Sharing",
   description: "Instant, cross-network, peer-to-peer file sharing directly from your browser. No limits, pure speed.",
   keywords: ["file sharing", "p2p", "webrtc", "send files", "secure transfer", "nodeferry"],

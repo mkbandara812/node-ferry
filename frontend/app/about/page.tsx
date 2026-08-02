@@ -1,3 +1,13 @@
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About NodeFerry - Zero-Knowledge Private File Transfer',
+  description: 'Learn about NodeFerry, our mission to provide the fastest, most secure way to transfer files between devices using military-grade End-to-End Encryption.',
+  alternates: {
+    canonical: '/about',
+  },
+};
+
 export default function About() {
   return (
     <div className="w-full max-w-4xl mx-auto px-6 md:px-12 py-16 md:py-24 flex flex-col gap-12">

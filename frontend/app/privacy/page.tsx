@@ -1,3 +1,13 @@
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy - NodeFerry',
+  description: 'NodeFerry Privacy Policy. Learn about what information we collect, how we use it, and how we ensure your file transfers remain strictly confidential.',
+  alternates: {
+    canonical: '/privacy',
+  },
+};
+
 export default function PrivacyPolicy() {
   return (
     <div className="w-full max-w-4xl mx-auto px-6 md:px-12 py-16 md:py-24 flex flex-col gap-10">
